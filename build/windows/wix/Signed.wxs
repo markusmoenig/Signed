@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="windows-1252"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+    <Product Name="Signed"
+             Id="*"
+             UpgradeCode="02461b42-2c06-49d3-9d28-0e68c3aede40"
+             Language="1033"
+             Codepage="1252"
+             Version="0.1.0"
+             Manufacturer="Markus Moenig">
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"/>
+        <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
+        <Icon Id="SignedIcon" SourceFile=".\build\windows\Signed.ico"/>
+        <WixVariable Id="WixUILicenseRtf" Value=".\build\windows\wix\license.rtf"/>
+        <Property Id="ARPPRODUCTICON" Value="SignedIcon"/>
+        <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR"/>
+        <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch Eldiron"/>
+        <Property Id="WixShellExecTarget" Value="[#EldironExeFile]"/>
+        <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes"/>
+        <MediaTemplate EmbedCab="yes"/>
+
+        <UI>
+            <UIRef Id="WixUI_InstallDir"/>
+            <Publish Dialog="ExitDialog"
+                     Control="Finish"
+                     Event="DoAction"
+                     Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+        </UI>
+
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLDIR" Name="Signed"/>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ProgramMenu" Name="Signed"/>
+            </Directory>
+        </Directory>
+
+        <DirectoryRef Id="INSTALLDIR">
+            <Component Id="SignedExe" Guid="*">
+                <File Id="SignedExeFile" Source=".\Signed.exe" Name="Signed.exe" KeyPath="yes" Checksum="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id="ProgramMenu">
+            <Component Id="Shortcut" Guid="*">
+                <Shortcut Id="ShortcutFile"
+                          Icon="SignedIcon"
+                          Name="Signed"
+                          Description="A procedural voxel editor"
+                          Target="[!SignedExeFile]"
+                          WorkingDirectory="INSTALLDIR"/>
+                <Shortcut Id="UninstallProduct"
+                          Name="Uninstall Signed"
+                          Target="[SystemFolder]msiexec.exe"
+                          Arguments="/x [ProductCode]"
+                          Description="Uninstalls Signed" />
+                <RemoveFolder Id="ProgramMenu" On="uninstall"/>
+                <RegistryValue Root="HKCU" Key="Software\MarkusMoenig\Signed" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <DirectoryRef Id="INSTALLDIR">
+            <Component Id="ModifyPathEnv" Guid="7e1e1f88-826e-4a58-b9e5-343367a0c113" KeyPath="yes">
+                <Environment Id="PathEnv" Value="[INSTALLDIR]" Name="PATH" Permanent="no" Part="first" Action="set" System="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <Feature Id="MainApplicatiton" Title="Main Application" Level="1">
+            <ComponentRef Id="SignedExe"/>
+            <ComponentRef Id="Shortcut"/>
+            <ComponentRef Id="ModifyPathEnv"/>
+        </Feature>
+    </Product>
+</Wix>

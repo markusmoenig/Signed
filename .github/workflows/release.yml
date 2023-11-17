@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+
+jobs:
+  linux_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Dependencies
+        run: cargo install cargo-bundle
+
+      - name: Build
+        run: |
+          cargo build --verbose --release
+          cargo bundle --release
+          mv target/release/bundle/deb/*.deb Signed.deb
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: Signed.deb
+
+  windows_release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build
+        run: |
+          cargo build --verbose --release
+          mv target/release/signed.exe Signed.exe
+
+      - name: Install WiX
+        run: nuget install WiX -Version 3.11.2
+
+      - name: Create MSI Installer
+        run: |
+          ./WiX.*/tools/candle.exe -arch "x64" -ext WixUIExtension -ext WixUtilExtension \
+            -out "./Signed.wixobj" "build/windows/wix/Signed.wxs"
+          ./WiX.*/tools/light.exe -ext WixUIExtension -ext WixUtilExtension \
+            -out "./Signed.msi" -sice:ICE61 -sice:ICE91 \
+            "./Signed.wixobj"
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: Signed.msi
