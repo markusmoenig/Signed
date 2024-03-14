@@ -1,11 +1,19 @@
-use crate::{prelude::*, browser::Browser};
+use crate::prelude::*;
+use lazy_static::lazy_static;
 use std::sync::mpsc::Receiver;
+use theframework::prelude::*;
+
+lazy_static! {
+    pub static ref RENDERVIEW: Mutex<RenderView> = Mutex::new(RenderView::default());
+    pub static ref PANEL: Mutex<Panel> = Mutex::new(Panel::default());
+    pub static ref TRACER: Mutex<Tracer> = Mutex::new(Tracer::new());
+}
 
 pub struct Editor {
     project: Project,
+    update_tracker: UpdateTracker,
 
     sidebar: Sidebar,
-    browser: Browser,
     event_receiver: Option<Receiver<TheEvent>>,
 }
 
@@ -16,15 +24,14 @@ impl TheTrait for Editor {
     {
         Self {
             sidebar: Sidebar::new(),
-            browser: Browser::new(),
             event_receiver: None,
+            update_tracker: UpdateTracker::default(),
 
             project: Project::default(),
         }
     }
 
     fn init_ui(&mut self, ui: &mut TheUI, ctx: &mut TheContext) {
-
         // Menubar
         let mut top_canvas = TheCanvas::new();
 
@@ -60,16 +67,35 @@ impl TheTrait for Editor {
         top_canvas.set_layout(hlayout);
         ui.canvas.set_top(top_canvas);
 
-        // Sidebar
+        self.sidebar.init_ui(ui, ctx);
 
-        self.sidebar.init_ui(ui, ctx, &mut self.project);
+        // Shared Layout
+        let render_canvas = RENDERVIEW
+            .lock()
+            .unwrap()
+            .init_ui(ui, ctx, &mut self.project);
+        let panel_canvas = PANEL.lock().unwrap().init_ui(ui, ctx, &mut self.project);
 
-        // Browser
+        let mut vsplitlayout = TheSharedVLayout::new(TheId::named("Shared VLayout"));
+        vsplitlayout.add_canvas(render_canvas);
+        vsplitlayout.add_canvas(panel_canvas);
+        vsplitlayout.set_shared_ratio(0.6);
+        vsplitlayout.set_mode(TheSharedVLayoutMode::Shared);
 
-        self.browser.init_ui(ui, ctx, &mut self.project);
+        let mut shared_canvas = TheCanvas::new();
+        shared_canvas.set_layout(vsplitlayout);
 
-        // Main
+        ui.canvas.set_center(shared_canvas);
 
+        // Statusbar
+        let mut status_canvas = TheCanvas::new();
+        let mut statusbar = TheStatusbar::new(TheId::named("Statusbar"));
+        statusbar.set_text("Welcome to Signed.".to_string());
+        status_canvas.set_widget(statusbar);
+
+        ui.canvas.set_bottom(status_canvas);
+
+        // Get events
         self.event_receiver = Some(ui.add_state_listener("Main Receiver".into()));
     }
 
@@ -77,16 +103,43 @@ impl TheTrait for Editor {
     fn update_ui(&mut self, ui: &mut TheUI, ctx: &mut TheContext) -> bool {
         let mut redraw = false;
 
+        let tick_update = self.update_tracker.update(500);
+
+        if tick_update {
+            if let Some(renderview) = ui.get_render_view("Render View") {
+                let dim = renderview.dim();
+
+                let zoom: f32 = 1.0;
+
+                let width = (dim.width as f32 / zoom) as i32;
+                let height = (dim.height as f32 / zoom) as i32;
+
+                let buffer = renderview.render_buffer_mut();
+                buffer.resize(width, height);
+                TRACER.lock().unwrap().render(buffer, &self.project);
+                redraw = true;
+            }
+        }
+
         if let Some(receiver) = &mut self.event_receiver {
             while let Ok(event) = receiver.try_recv() {
-                redraw = self.sidebar.handle_event(&event, ui, ctx, &mut self.project);
+                redraw = self
+                    .sidebar
+                    .handle_event(&event, ui, ctx, &mut self.project);
+                if PANEL
+                    .lock()
+                    .unwrap()
+                    .handle_event(&event, ui, ctx, &mut self.project)
+                {
+                    redraw = true;
+                }
                 match event {
-
                     TheEvent::FileRequesterResult(id, paths) => {
                         if id.name == "Open" {
                             for p in paths {
                                 let contents = std::fs::read_to_string(p).unwrap_or("".to_string());
-                                self.project = serde_json::from_str(&contents).unwrap_or(Project::default());
+                                self.project =
+                                    serde_json::from_str(&contents).unwrap_or(Project::default());
                                 self.sidebar.load_from_project(ui, ctx, &self.project);
                                 redraw = true;
                             }
@@ -98,25 +151,29 @@ impl TheTrait for Editor {
                         }
                     }
                     TheEvent::StateChanged(id, _state) => {
-
                         // Open / Save Project
 
                         if id.name == "Open" {
                             ctx.ui.open_file_requester(
                                 TheId::named_with_id(id.name.as_str(), Uuid::new_v4()),
                                 "Open".into(),
-                                TheFileExtension::new("Eldiron".into(), vec!["eldiron".to_string()]),
+                                TheFileExtension::new(
+                                    "Eldiron".into(),
+                                    vec!["eldiron".to_string()],
+                                ),
                             );
                             ctx.ui
                                 .set_widget_state("Open".to_string(), TheWidgetState::None);
                             ctx.ui.clear_hover();
                             redraw = true;
-                        } else
-                        if id.name == "Save" {
+                        } else if id.name == "Save" {
                             ctx.ui.save_file_requester(
                                 TheId::named_with_id(id.name.as_str(), Uuid::new_v4()),
                                 "Save".into(),
-                                TheFileExtension::new("Eldiron".into(), vec!["eldiron".to_string()]),
+                                TheFileExtension::new(
+                                    "Eldiron".into(),
+                                    vec!["eldiron".to_string()],
+                                ),
                             );
                             ctx.ui
                                 .set_widget_state("Save".to_string(), TheWidgetState::None);
@@ -124,34 +181,15 @@ impl TheTrait for Editor {
                             redraw = true;
                         }
                     }
-                    TheEvent::ImageDecodeResult(id, name, buffer) => {
-                        // Add a new tilemap to the project
-                        if id.name == "Tiles Add" {
-
-                            let mut tilemap = Tilemap::default();
-                            tilemap.name = name;
-                            tilemap.id = id.uuid;
-                            tilemap.buffer = buffer;
-
-                            self.project.add_tilemap(tilemap);
-                        }
-                    }
                     TheEvent::ValueChanged(id, value) => {
                         //println!("{:?} {:?}", id, value);
-                        if id.name == "Tiles Name Edit" {
-                            if let Some(list_id) = self.sidebar.get_selected_in_list_layout(ui, "Tiles List") {
-                                ctx.ui.send(TheEvent::SetValue(list_id.uuid, value));
-                            }
-                        } else
-                        if id.name == "Tiles Item" {
-                            for t in &mut self.project.tilemaps {
-                                if t.id == id.uuid {
-                                    if let Some(text) = value.to_string() {
-                                        t.name = text;
-                                    }
-                                }
-                            }
-                        }
+                        // if id.name == "Tiles Name Edit" {
+                        //     if let Some(list_id) =
+                        //         self.sidebar.get_selected_in_list_layout(ui, "Tiles List")
+                        //     {
+                        //         ctx.ui.send(TheEvent::SetValue(list_id.uuid, value));
+                        //     }
+                        // }
                     }
                     _ => {}
                 }
@@ -160,7 +198,3 @@ impl TheTrait for Editor {
         redraw
     }
 }
-
-pub trait EldironEditor {}
-
-impl EldironEditor for Editor {}

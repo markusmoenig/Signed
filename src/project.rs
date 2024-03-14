@@ -1,32 +1,36 @@
-use crate::{prelude::*, tilemap::Tilemap};
+use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Project {
     pub name: String,
-    pub tilemaps: Vec<Tilemap>,
+    pub id: Uuid,
+
+    pub objects: Vec<Object>,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Project {
-    pub fn default() -> Self {
+    pub fn new() -> Self {
         Self {
             name: String::new(),
+            id: Uuid::new_v4(),
 
-            tilemaps: vec![],
+            objects: Vec::new(),
         }
     }
 
-    /// Add a tilemap
-    pub fn add_tilemap(&mut self, tilemap: Tilemap) {
-        self.tilemaps.push(tilemap)
+    /// Add an object
+    pub fn add_object(&mut self, object: Object) {
+        self.objects.push(object)
     }
 
     /// Get the tilemap of the given uuid.
-    pub fn get_tilemap(&mut self, uuid: Uuid) -> Option<&mut Tilemap> {
-        for t in &mut self.tilemaps {
-            if t.id == uuid {
-                return Some(t);
-            }
-        }
-        None
+    pub fn get_object_mut(&mut self, uuid: Uuid) -> Option<&mut Object> {
+        self.objects.iter_mut().find(|o| o.id == uuid)
     }
 }
