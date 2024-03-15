@@ -109,6 +109,7 @@ impl Panel {
         ui: &mut TheUI,
         ctx: &mut TheContext,
         project: &mut Project,
+        editor_ctx: &mut EditorContext,
     ) -> bool {
         let mut redraw = false;
         match event {

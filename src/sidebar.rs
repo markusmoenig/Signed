@@ -10,7 +10,7 @@ pub struct Sidebar {
 impl Sidebar {
     pub fn new() -> Self {
         Self {
-            width: 380,
+            width: 420,
             stack_layout_id: TheId::empty(),
         }
     }
@@ -92,15 +92,23 @@ impl Sidebar {
         let name_edit = TheTextLineEdit::new(TheId::named("Regions Name Edit"));
         text_layout.add_pair("Name".to_string(), Box::new(name_edit));
 
-        // let mut yellow_canvas = TheCanvas::default();
-        // let mut yellow_color = TheColorButton::new(TheId::named("Yellow"));
-        // yellow_color.set_color([255, 255, 0, 255]);
-        // yellow_color.limiter_mut().set_max_size(vec2i(width, 350));
-        // yellow_canvas.set_widget(yellow_color);
+        let mut render_canvas = TheCanvas::default();
+        let mut render_widget = TheRenderView::new(TheId::named("Point View"));
+        render_widget
+            .limiter_mut()
+            .set_max_size(vec2i(width - 40, 200));
+
+        let mut render_vlayout = TheHLayout::new(TheId::empty());
+        render_vlayout.set_mode(TheHLayoutMode::SizeBased);
+        // render_vlayout.set_background_color(None);
+        render_vlayout.set_margin(vec4i(10, 10, 10, 10));
+        render_vlayout.add_widget(Box::new(render_widget));
+        render_canvas.set_layout(render_vlayout);
 
         objects_canvas.set_top(list_canvas);
         objects_canvas.set_layout(text_layout);
-        // objects_canvas.set_bottom(yellow_canvas);
+        objects_canvas.set_center(render_canvas);
+
         stack_layout.add_canvas(objects_canvas);
 
         // Points
@@ -212,6 +220,7 @@ impl Sidebar {
         ui: &mut TheUI,
         ctx: &mut TheContext,
         project: &mut Project,
+        editor_ctx: &mut EditorContext,
     ) -> bool {
         let mut redraw = false;
         match event {

@@ -10,10 +10,10 @@ pub enum CameraMode {
 /// Ray
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Ray {
-    pub o: Vec3f,
-    pub d: Vec3f,
+    pub o: Vec3d,
+    pub d: Vec3d,
 
-    pub inv_direction: Vec3f,
+    pub inv_direction: Vec3d,
 
     pub sign_x: usize,
     pub sign_y: usize,
@@ -21,12 +21,12 @@ pub struct Ray {
 }
 
 impl Ray {
-    pub fn new(o: Vec3f, d: Vec3f) -> Self {
+    pub fn new(o: Vec3d, d: Vec3d) -> Self {
         Self {
             o,
             d,
 
-            inv_direction: Vec3f::new(1.0 / d.x, 1.0 / d.y, 1.0 / d.z),
+            inv_direction: Vec3d::new(1.0 / d.x, 1.0 / d.y, 1.0 / d.z),
             sign_x: (d.x < 0.0) as usize,
             sign_y: (d.y < 0.0) as usize,
             sign_z: (d.z < 0.0) as usize,
@@ -34,7 +34,7 @@ impl Ray {
     }
 
     /// Returns the position on the ray at the given distance
-    pub fn at(&self, d: f32) -> Vec3f {
+    pub fn at(&self, d: f64) -> Vec3d {
         self.o + self.d * d
     }
 }

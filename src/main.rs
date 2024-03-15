@@ -13,6 +13,7 @@ pub mod tracer;
 
 pub mod prelude {
     pub use crate::camera::*;
+    pub use crate::editor::EditorContext;
     pub use crate::misc::*;
     pub use crate::object::*;
     pub use crate::panel::*;

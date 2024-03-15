@@ -4,6 +4,8 @@ use crate::prelude::*;
 pub struct Object {
     pub name: String,
     pub id: Uuid,
+
+    pub points: Vec<Point>,
 }
 
 impl Default for Object {
@@ -14,9 +16,24 @@ impl Default for Object {
 
 impl Object {
     pub fn new() -> Self {
+        let points = vec![
+            Point {
+                name: str!("Point A"),
+                id: Uuid::new_v4(),
+                position: Vec3f::zero(),
+            },
+            Point {
+                name: str!("Point B"),
+                id: Uuid::new_v4(),
+                position: vec3f(0.0, 1.0, 0.0),
+            },
+        ];
+
         Object {
             name: str!("New Object"),
             id: Uuid::new_v4(),
+
+            points,
         }
     }
 

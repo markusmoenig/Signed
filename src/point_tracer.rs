@@ -1,19 +1,19 @@
 use crate::prelude::*;
-use exmex::prelude::*;
 use rayon::prelude::*;
 use theframework::prelude::*;
 
-pub struct Tracer {
-    expr: Option<FlatEx<f64>>,
-}
+pub struct PointTracer {}
 
 #[allow(clippy::new_without_default)]
-impl Tracer {
+impl PointTracer {
     pub fn new() -> Self {
-        Self { expr: None }
+        Self {
+            expr: None,
+            //script: None,
+        }
     }
 
-    pub fn render(&mut self, buffer: &mut TheRGBABuffer, _project: &Project) {
+    pub fn render(&mut self, buffer: &mut TheRGBABuffer, project: &Project) {
         let _start = self.get_time();
 
         //let stride = buffer.stride();
@@ -28,10 +28,8 @@ impl Tracer {
         let fov = 70.0;
         let camera_mode = CameraMode::Pinhole;
 
-        let aa = 1;
+        let aa = 2;
         let aa_f = aa as f64;
-
-        self.expr = exmex::parse::<f64>("sin(x * 20.0 - 1.0) * 0.1").ok();
 
         let pixels = buffer.pixels_mut();
         let iso_value = 0.0001_f64;

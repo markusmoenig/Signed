@@ -9,9 +9,16 @@ lazy_static! {
     pub static ref TRACER: Mutex<Tracer> = Mutex::new(Tracer::new());
 }
 
+pub struct EditorContext {
+    pub curr_object: Option<Uuid>,
+    pub curr_point: Option<Uuid>,
+}
+
 pub struct Editor {
     project: Project,
     update_tracker: UpdateTracker,
+
+    context: EditorContext,
 
     sidebar: Sidebar,
     event_receiver: Option<Receiver<TheEvent>>,
@@ -28,6 +35,10 @@ impl TheTrait for Editor {
             update_tracker: UpdateTracker::default(),
 
             project: Project::default(),
+            context: EditorContext {
+                curr_object: None,
+                curr_point: None,
+            },
         }
     }
 
@@ -119,18 +130,38 @@ impl TheTrait for Editor {
                 TRACER.lock().unwrap().render(buffer, &self.project);
                 redraw = true;
             }
+
+            if let Some(pointview) = ui.get_render_view("Point View") {
+                let dim = pointview.dim();
+
+                let zoom: f32 = 1.0;
+
+                let width = (dim.width as f32 / zoom) as i32;
+                let height = (dim.height as f32 / zoom) as i32;
+
+                let buffer = pointview.render_buffer_mut();
+                buffer.resize(width, height);
+                //TRACER.lock().unwrap().render(buffer, &self.project);
+                redraw = true;
+            }
         }
 
         if let Some(receiver) = &mut self.event_receiver {
             while let Ok(event) = receiver.try_recv() {
-                redraw = self
-                    .sidebar
-                    .handle_event(&event, ui, ctx, &mut self.project);
-                if PANEL
-                    .lock()
-                    .unwrap()
-                    .handle_event(&event, ui, ctx, &mut self.project)
-                {
+                redraw = self.sidebar.handle_event(
+                    &event,
+                    ui,
+                    ctx,
+                    &mut self.project,
+                    &mut self.context,
+                );
+                if PANEL.lock().unwrap().handle_event(
+                    &event,
+                    ui,
+                    ctx,
+                    &mut self.project,
+                    &mut self.context,
+                ) {
                     redraw = true;
                 }
                 match event {

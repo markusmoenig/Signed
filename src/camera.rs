@@ -1,27 +1,27 @@
 use crate::prelude::*;
-use std::f32::consts::PI;
+use std::f64::consts::PI;
 use theframework::prelude::*;
 
 /// Camera
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Camera {
-    pub origin: Vec3f,
-    pub center: Vec3f,
-    pub fov: f32,
+    pub origin: Vec3d,
+    pub center: Vec3d,
+    pub fov: f64,
 
     // For orbit
-    pub distance: f32,
+    pub distance: f64,
 
-    pub forward: Vec3f,
-    pub up: Vec3f,
-    pub right: Vec3f,
+    pub forward: Vec3d,
+    pub up: Vec3d,
+    pub right: Vec3d,
 
-    pub orbit_x: f32,
-    pub orbit_y: f32,
+    pub orbit_x: f64,
+    pub orbit_y: f64,
 }
 
 impl Camera {
-    pub fn new(origin: Vec3f, center: Vec3f, fov: f32) -> Self {
+    pub fn new(origin: Vec3d, center: Vec3d, fov: f64) -> Self {
         Self {
             origin,
             center,
@@ -29,9 +29,9 @@ impl Camera {
 
             distance: 2.0,
 
-            forward: Vec3f::new(0.0, 0.0, -1.0),
-            up: Vec3f::new(0.0, 1.0, 0.0),
-            right: Vec3f::new(1.0, 0.0, 0.0),
+            forward: Vec3d::new(0.0, 0.0, -1.0),
+            up: Vec3d::new(0.0, 1.0, 0.0),
+            right: Vec3d::new(1.0, 0.0, 0.0),
 
             orbit_x: 0.0,
             orbit_y: -90.0,
@@ -39,7 +39,7 @@ impl Camera {
     }
 
     /// Set the camera's origin and center based on the top-down angle (in degrees)
-    pub fn set_top_down_angle(&mut self, angle_deg: f32, distance: f32, look_at: Vec3f) {
+    pub fn set_top_down_angle(&mut self, angle_deg: f64, distance: f64, look_at: Vec3d) {
         let angle_rad = angle_deg.to_radians();
         let height = distance * angle_rad.sin();
         let horizontal_distance = distance * angle_rad.cos();
@@ -47,7 +47,7 @@ impl Camera {
         self.center = look_at;
 
         // Assuming the camera looks along the negative z-axis by default
-        self.origin = Vec3f {
+        self.origin = Vec3d {
             x: look_at.x,
             y: look_at.y + height,
             z: look_at.z - horizontal_distance,
@@ -55,7 +55,7 @@ impl Camera {
     }
 
     /// Zoom the camera by a given factor
-    pub fn zoom(&mut self, delta: f32) {
+    pub fn zoom(&mut self, delta: f64) {
         let direction = normalize(self.center - self.origin);
 
         self.origin += direction * delta;
@@ -63,12 +63,12 @@ impl Camera {
     }
 
     // Move the camera by a given displacement
-    pub fn move_by(&mut self, x_offset: f32, y_offset: f32) {
-        // self.origin += Vec3f::new(x_offset, y_offset, 0.0);
-        // self.center += Vec3f::new(x_offset, y_offset, 0.0);
+    pub fn move_by(&mut self, x_offset: f64, y_offset: f64) {
+        // self.origin += Vec3d::new(x_offset, y_offset, 0.0);
+        // self.center += Vec3d::new(x_offset, y_offset, 0.0);
 
         let direction = normalize(self.center - self.origin);
-        let up_vector = vec3f(0.0, 1.0, 0.0);
+        let up_vector = vec3d(0.0, 1.0, 0.0);
         let right_vector = cross(direction, up_vector);
 
         let displacement = right_vector * x_offset + up_vector * y_offset;
@@ -78,7 +78,7 @@ impl Camera {
 
         /*
         let direction = normalize(self.center - self.origin);
-        let up_vector = vec3f(0.0, 1.0, 0.0);
+        let up_vector = Vec3d(0.0, 1.0, 0.0);
         let right_vector = cross(direction, up_vector);
 
         self.origin += direction * y_offset + right_vector * x_offset;
@@ -86,9 +86,9 @@ impl Camera {
     }
 
     /// Pan the camera horizontally and vertically
-    pub fn pan(&mut self, horizontal: f32, vertical: f32) {
+    pub fn pan(&mut self, horizontal: f64, vertical: f64) {
         let w = normalize(self.origin - self.center);
-        let up_vector = vec3f(0.0, 1.0, 0.0);
+        let up_vector = vec3d(0.0, 1.0, 0.0);
         let u = cross(up_vector, w);
         let v = cross(w, u);
 
@@ -96,8 +96,8 @@ impl Camera {
     }
 
     /// Rotate the camera around its center
-    pub fn rotate(&mut self, yaw: f32, pitch: f32) {
-        fn magnitude(vec: Vec3f) -> f32 {
+    pub fn rotate(&mut self, yaw: f64, pitch: f64) {
+        fn magnitude(vec: Vec3d) -> f64 {
             (vec.x.powi(2) + vec.y.powi(2) + vec.z.powi(2)).sqrt()
         }
 
@@ -117,14 +117,14 @@ impl Camera {
     }
 
     /// Create a pinhole ray
-    pub fn create_ray(&self, uv: Vec2f, screen: Vec2f, offset: Vec2f) -> Ray {
+    pub fn create_ray(&self, uv: Vec2d, screen: Vec2d, offset: Vec2d) -> Ray {
         let ratio = screen.x / screen.y;
-        let pixel_size = vec2f(1.0 / screen.x, 1.0 / screen.y);
+        let pixel_size = vec2d(1.0 / screen.x, 1.0 / screen.y);
 
         let half_width = (self.fov.to_radians() * 0.5).tan();
         let half_height = half_width / ratio;
 
-        let up_vector = vec3f(0.0, 1.0, 0.0);
+        let up_vector = vec3d(0.0, 1.0, 0.0);
 
         let w = normalize(self.origin - self.center);
         let u = cross(up_vector, w);
@@ -141,9 +141,9 @@ impl Camera {
         Ray::new(self.origin, normalize(dir))
     }
 
-    pub fn create_ortho_ray(&self, uv: Vec2f, screen: Vec2f, offset: Vec2f) -> Ray {
+    pub fn create_ortho_ray(&self, uv: Vec2d, screen: Vec2d, offset: Vec2d) -> Ray {
         let ratio = screen.x / screen.y;
-        let pixel_size = Vec2f::new(1.0 / screen.x, 1.0 / screen.y);
+        let pixel_size = Vec2d::new(1.0 / screen.x, 1.0 / screen.y);
 
         let cam_origin = self.origin;
         let cam_look_at = self.center;
@@ -151,7 +151,7 @@ impl Camera {
         let half_width = ((self.fov + 100.0).to_radians() * 0.5).tan();
         let half_height = half_width / ratio;
 
-        let up_vector = Vec3f::new(0.0, 1.0, 0.0);
+        let up_vector = Vec3d::new(0.0, 1.0, 0.0);
 
         let w = normalize(cam_origin - cam_look_at);
         let u = cross(up_vector, w);
@@ -168,14 +168,14 @@ impl Camera {
     }
 
     /// Computes the orbi camera vectors. Based on https://www.shadertoy.com/view/ttfyzN
-    pub fn compute_orbit(&mut self, mouse_delta: Vec2f) {
+    pub fn compute_orbit(&mut self, mouse_delta: Vec2d) {
         #[inline(always)]
-        pub fn mix(a: &f32, b: &f32, v: f32) -> f32 {
+        pub fn mix(a: &f64, b: &f64, v: f64) -> f64 {
             (1.0 - v) * a + b * v
         }
 
         let min_camera_angle = 0.01;
-        let max_camera_angle = std::f32::consts::PI - 0.01;
+        let max_camera_angle = std::f64::consts::PI - 0.01;
 
         self.orbit_x += mouse_delta.x;
         self.orbit_y += mouse_delta.y;
@@ -183,7 +183,7 @@ impl Camera {
         let angle_x = -self.orbit_x;
         let angle_y = mix(&min_camera_angle, &max_camera_angle, self.orbit_y);
 
-        let mut camera_pos = Vec3f::zero();
+        let mut camera_pos = Vec3d::zero();
 
         camera_pos.x = sin(angle_x) * sin(angle_y) * self.distance;
         camera_pos.y = -cos(angle_y) * self.distance;
@@ -193,12 +193,12 @@ impl Camera {
 
         self.origin = camera_pos;
         self.forward = normalize(self.center - camera_pos);
-        self.right = normalize(cross(vec3f(0.0, 1.0, 0.0), -self.forward));
+        self.right = normalize(cross(vec3d(0.0, 1.0, 0.0), -self.forward));
         self.up = normalize(cross(-self.forward, self.right));
     }
 
     /// Create an orbit camera ray
-    pub fn create_orbit_ray(&self, uv: Vec2f, screen_dim: Vec2f, offset: Vec2f) -> Ray {
+    pub fn create_orbit_ray(&self, uv: Vec2d, screen_dim: Vec2d, offset: Vec2d) -> Ray {
         let camera_pos = self.origin;
         let camera_fwd = self.forward;
         let camera_up = self.up;
@@ -210,9 +210,9 @@ impl Camera {
         let aspect_ratio = screen_dim.x / screen_dim.y;
         screen.y /= aspect_ratio;
 
-        let camera_distance = tan(self.fov * 0.5 * std::f32::consts::PI / 180.0);
-        let mut ray_dir = vec3f(screen.x, screen.y, camera_distance);
-        ray_dir = normalize(Mat3f::from((camera_right, camera_up, camera_fwd)) * ray_dir);
+        let camera_distance = tan(self.fov * 0.5 * std::f64::consts::PI / 180.0);
+        let mut ray_dir = vec3d(screen.x, screen.y, camera_distance);
+        ray_dir = normalize(Mat3d::from((camera_right, camera_up, camera_fwd)) * ray_dir);
 
         Ray::new(camera_pos, ray_dir)
     }
